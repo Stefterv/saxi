@@ -878,7 +878,7 @@ function DragTarget() {
 
 ReactDOM.render(<Root driver={Driver.connect()}/>, document.getElementById("app"));
 
-function withSVG<T>(svgString: string, fn: (svg: SVGSVGElement) => T): T {
+export function withSVG<T>(svgString: string, fn: (svg: SVGSVGElement) => T): T {
   const div = document.createElement("div");
   div.style.position = "absolute";
   div.style.left = "99999px";
@@ -892,7 +892,7 @@ function withSVG<T>(svgString: string, fn: (svg: SVGSVGElement) => T): T {
   }
 }
 
-function readSvg(svgString: string): Vec2[][] {
+export function readSvg(svgString: string): Vec2[][] {
   return withSVG(svgString, flattenSVG).map((line) => {
     const a = line.points.map(([x, y]: [number, number]) => ({x, y}));
     (a as any).stroke = line.stroke;

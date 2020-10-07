@@ -74,6 +74,7 @@
   },
   "files": [
     "/dist",
-    "cli.js"
+    "cli.js",
+    "/src"
   ]
 }
