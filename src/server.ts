@@ -152,6 +152,7 @@ export function startServer(port: number, device: string | null = null, enableCo
     },
     async postCancel(): Promise<void> {
       await ebb.setPenHeight(Device.Axidraw.penPctToPos(0), 1000);
+      await ebb.command("HM,5000");
     },
     async postPlot(): Promise<void> {
       await ebb.waitUntilMotorsIdle();

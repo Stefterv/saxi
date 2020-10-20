@@ -117,7 +117,11 @@ export class EBB {
     return this.command(`EM,${microsteppingMode},${microsteppingMode}`);
   }
 
-  public disableMotors(): Promise<void> { return this.command("EM,0,0"); }
+  public async disableMotors(): Promise<void> { 
+    await this.command("R"); 
+    console.log("Emergency Stop!");
+    return this.close();
+  }
 
   public setPenHeight(height: number, rate: number, delay: number = 0): Promise<void> {
     return this.command(`S2,${height},4,${rate},${delay}`);
