@@ -44,6 +44,7 @@ export function startServer(port: number, device: string | null = null, enableCo
             limpRequested = true;
             broadcast({ c: "limped" });
             if (ebb) { ebb.disableMotors(); }
+            plotting = false;
             break;
           case "setPenHeight":
             if (ebb) { ebb.setPenHeight(msg.p.height, msg.p.rate); }
