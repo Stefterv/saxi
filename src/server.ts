@@ -42,6 +42,7 @@ export function startServer(port: number, device: string | null = null, enableCo
             break;
           case "limp":
             limpRequested = true;
+            broadcast({ c: "limped" });
             if (ebb) { ebb.disableMotors(); }
             break;
           case "setPenHeight":
