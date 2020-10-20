@@ -24,6 +24,7 @@ export function startServer(port: number, device: string | null = null, enableCo
   let ebb: EBB | null;
   let clients: WebSocket[] = [];
   let cancelRequested = false;
+  let limpRequested = false;
   let unpaused: Promise<void> | null = null;
   let signalUnpause: () => void | null = null;
   let motionIdx: number | null = null;
@@ -40,6 +41,7 @@ export function startServer(port: number, device: string | null = null, enableCo
             ws.send(JSON.stringify({c: "pong"}));
             break;
           case "limp":
+            limpRequested = true;
             if (ebb) { ebb.disableMotors(); }
             break;
           case "setPenHeight":
@@ -176,6 +178,7 @@ export function startServer(port: number, device: string | null = null, enableCo
 
   async function doPlot(plotter: Plotter, plan: Plan): Promise<void> {
     cancelRequested = false;
+    limpRequested = false;
     unpaused = null;
     signalUnpause = null;
     motionIdx = 0;
@@ -195,7 +198,9 @@ export function startServer(port: number, device: string | null = null, enableCo
         await unpaused;
         broadcast({c: "pause", p: {paused: false}});
       }
-      if (cancelRequested) { break; }
+      if (cancelRequested || limpRequested) {
+        break;
+      }
       motionIdx += 1;
     }
     motionIdx = null;
