@@ -9,11 +9,16 @@ import { EBB } from "./ebb";
 import { Device, PenMotion, Motion, Plan } from "./planning";
 import { formatDuration } from "./util";
 
-export function startServer(port: number, device: string | null = null, enableCors: boolean = false, maxPayloadSize: string = "200mb") {
+export function startServer(
+  port: number,
+  device: string | null = null,
+  enableCors: boolean = false,
+  maxPayloadSize: string = "200mb"
+) {
   const app = express();
 
   app.use("/", express.static(path.join(__dirname, "..", "ui")));
-  app.use(express.json({limit: maxPayloadSize}));
+  app.use(express.json({ limit: maxPayloadSize }));
   if (enableCors) {
     app.use(cors());
   }
@@ -29,7 +34,7 @@ export function startServer(port: number, device: string | null = null, enableCo
   let signalUnpause: () => void | null = null;
   let motionIdx: number | null = null;
   let currentPlan: Plan | null = null;
-  let plotting = false
+  let plotting = false;
 
   wss.on("connection", (ws) => {
     clients.push(ws);
@@ -38,28 +43,34 @@ export function startServer(port: number, device: string | null = null, enableCo
         const msg = JSON.parse(message);
         switch (msg.c) {
           case "ping":
-            ws.send(JSON.stringify({c: "pong"}));
+            ws.send(JSON.stringify({ c: "pong" }));
             break;
           case "limp":
             limpRequested = true;
             broadcast({ c: "limped" });
-            if (ebb) { ebb.disableMotors(); }
+            if (ebb) {
+              ebb.disableMotors();
+            }
             plotting = false;
             break;
           case "setPenHeight":
-            if (ebb) { ebb.setPenHeight(msg.p.height, msg.p.rate); }
+            if (ebb) {
+              ebb.setPenHeight(msg.p.height, msg.p.rate);
+            }
             break;
         }
       }
     });
 
-    ws.send(JSON.stringify({c: "dev", p: {path: ebb ? ebb.port.path : null}}));
-    ws.send(JSON.stringify({c: "pause", p: {paused: !!unpaused}}));
+    ws.send(
+      JSON.stringify({ c: "dev", p: { path: ebb ? ebb.port.path : null } })
+    );
+    ws.send(JSON.stringify({ c: "pause", p: { paused: !!unpaused } }));
     if (motionIdx != null) {
-      ws.send(JSON.stringify({c: "progress", p: {motionIdx}}));
+      ws.send(JSON.stringify({ c: "progress", p: { motionIdx } }));
     }
     if (currentPlan != null) {
-      ws.send(JSON.stringify({c: "plan", p: {plan: currentPlan}}));
+      ws.send(JSON.stringify({ c: "plan", p: { plan: currentPlan } }));
     }
 
     ws.on("close", () => {
@@ -69,14 +80,16 @@ export function startServer(port: number, device: string | null = null, enableCo
 
   app.post("/plot", async (req, res) => {
     if (plotting) {
-      console.log("Received plot request, but a plot is already in progress!")
-      return res.status(400).end('Plot in progress')
+      console.log("Received plot request, but a plot is already in progress!");
+      return res.status(400).end("Plot in progress");
     }
-    plotting = true
+    plotting = true;
     try {
       const plan = Plan.deserialize(req.body);
       currentPlan = req.body;
-      console.log(`Received plan of estimated duration ${formatDuration(plan.duration())}`);
+      console.log(
+        `Received plan of estimated duration ${formatDuration(plan.duration())}`
+      );
       console.log(ebb != null ? "Beginning plot..." : "Simulating plot...");
       res.status(200).end();
 
@@ -85,7 +98,9 @@ export function startServer(port: number, device: string | null = null, enableCo
       try {
         wakeLock = new WakeLock("saxi plotting");
       } catch (e) {
-        console.warn("Couldn't acquire wake lock. Ensure your machine does not sleep during plotting");
+        console.warn(
+          "Couldn't acquire wake lock. Ensure your machine does not sleep during plotting"
+        );
       }
 
       try {
@@ -98,7 +113,7 @@ export function startServer(port: number, device: string | null = null, enableCo
         }
       }
     } finally {
-      plotting = false
+      plotting = false;
     }
   });
 
@@ -113,10 +128,10 @@ export function startServer(port: number, device: string | null = null, enableCo
 
   app.post("/pause", (req, res) => {
     if (!unpaused) {
-      unpaused = new Promise(resolve => {
+      unpaused = new Promise((resolve) => {
         signalUnpause = resolve;
       });
-      broadcast({c: "pause", p: {paused: true}});
+      broadcast({ c: "pause", p: { paused: true } });
     }
     res.status(200).end();
   });
@@ -127,7 +142,7 @@ export function startServer(port: number, device: string | null = null, enableCo
       signalUnpause = unpaused = null;
     }
     res.status(200).end();
-  })
+  });
 
   function broadcast(msg: any) {
     clients.forEach((ws) => {
@@ -144,14 +159,17 @@ export function startServer(port: number, device: string | null = null, enableCo
     executeMotion: (m: Motion, progress: [number, number]) => Promise<void>;
     postCancel: () => Promise<void>;
     postPlot: () => Promise<void>;
-  };
+  }
 
   const realPlotter: Plotter = {
     async prePlot(initialPenHeight: number): Promise<void> {
       await ebb.enableMotors(2);
       await ebb.setPenHeight(initialPenHeight, 1000, 1000);
     },
-    async executeMotion(motion: Motion, _progress: [number, number]): Promise<void> {
+    async executeMotion(
+      motion: Motion,
+      _progress: [number, number]
+    ): Promise<void> {
       await ebb.executeMotion(motion);
     },
     async postCancel(): Promise<void> {
@@ -165,17 +183,20 @@ export function startServer(port: number, device: string | null = null, enableCo
   };
 
   const simPlotter: Plotter = {
-    async prePlot(_initialPenHeight: number): Promise<void> {
-    },
-    async executeMotion(motion: Motion, progress: [number, number]): Promise<void> {
+    async prePlot(_initialPenHeight: number): Promise<void> {},
+    async executeMotion(
+      motion: Motion,
+      progress: [number, number]
+    ): Promise<void> {
       console.log(`Motion ${progress[0] + 1}/${progress[1]}`);
-      await new Promise((resolve) => setTimeout(resolve, motion.duration() * 1000));
+      await new Promise((resolve) =>
+        setTimeout(resolve, motion.duration() * 1000)
+      );
     },
     async postCancel(): Promise<void> {
       console.log("Plot cancelled");
     },
-    async postPlot(): Promise<void> {
-    },
+    async postPlot(): Promise<void> {},
   };
 
   async function doPlot(plotter: Plotter, plan: Plan): Promise<void> {
@@ -185,20 +206,22 @@ export function startServer(port: number, device: string | null = null, enableCo
     signalUnpause = null;
     motionIdx = 0;
 
-    const firstPenMotion = (plan.motions.find((x) => x instanceof PenMotion) as PenMotion);
+    const firstPenMotion = plan.motions.find(
+      (x) => x instanceof PenMotion
+    ) as PenMotion;
     await plotter.prePlot(firstPenMotion.initialPos);
 
     let penIsUp = true;
 
     for (const motion of plan.motions) {
-      broadcast({c: "progress", p: {motionIdx}});
+      broadcast({ c: "progress", p: { motionIdx } });
       await plotter.executeMotion(motion, [motionIdx, plan.motions.length]);
       if (motion instanceof PenMotion) {
         penIsUp = motion.initialPos < motion.finalPos;
       }
       if (unpaused && penIsUp) {
         await unpaused;
-        broadcast({c: "pause", p: {paused: false}});
+        broadcast({ c: "pause", p: { paused: false } });
       }
       if (cancelRequested || limpRequested) {
         break;
@@ -209,10 +232,10 @@ export function startServer(port: number, device: string | null = null, enableCo
     currentPlan = null;
     if (cancelRequested) {
       await plotter.postCancel();
-      broadcast({c: "cancelled"});
+      broadcast({ c: "cancelled" });
       cancelRequested = false;
     } else {
-      broadcast({c: "finished"});
+      broadcast({ c: "finished" });
     }
     await plotter.postPlot();
   }
@@ -222,11 +245,11 @@ export function startServer(port: number, device: string | null = null, enableCo
       async function connect() {
         for await (const d of ebbs(device)) {
           ebb = d;
-          broadcast({c: "dev", p: {path: ebb ? ebb.port.path : null}});
+          broadcast({ c: "dev", p: { path: ebb ? ebb.port.path : null } });
         }
       }
       connect();
-      const {family, address, port} = server.address() as any;
+      const { family, address, port } = server.address() as any;
       const addr = `${family === "IPv6" ? `[${address}]` : address}:${port}`;
       console.log(`Server listening on http://${addr}`);
       resolve(server);
@@ -284,7 +307,9 @@ async function* ebbs(path?: string) {
   }
 }
 
-export async function connectEBB(path: string | undefined): Promise<EBB | null> {
+export async function connectEBB(
+  path: string | undefined
+): Promise<EBB | null> {
   if (path) {
     return new EBB(new SerialPort(path));
   } else {
