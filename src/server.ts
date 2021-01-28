@@ -5,6 +5,8 @@ import path from "path";
 import SerialPort from "serialport";
 import { WakeLock } from "wake-lock";
 import WebSocket from "ws";
+import url from "url";
+
 import { EBB } from "./ebb";
 import { Device, PenMotion, Motion, Plan } from "./planning";
 import { formatDuration } from "./util";
@@ -18,13 +20,42 @@ export function startServer(
   const app = express();
 
   app.use("/", express.static(path.join(__dirname, "..", "ui")));
-  app.use(express.json({ limit: maxPayloadSize }));
   if (enableCors) {
     app.use(cors());
   }
 
+  const { rest, wss, connect } = standalone(device, maxPayloadSize);
+  app.use(rest);
+
   const server = http.createServer(app);
-  const wss = new WebSocket.Server({ server });
+  server.on("upgrade", function upgrade(request, socket, head) {
+    const pathname = url.parse(request.url).pathname;
+
+    if (pathname === "/") {
+      wss.handleUpgrade(request, socket, head, function done(ws) {
+        wss.emit("connection", ws, request);
+      });
+    }
+  });
+  return new Promise((resolve) => {
+    server.listen(port, () => {
+      connect();
+      const { family, address, port } = server.address() as any;
+      const addr = `${family === "IPv6" ? `[${address}]` : address}:${port}`;
+      console.log(`Server listening on http://${addr}`);
+      resolve(server);
+    });
+  });
+}
+
+export function standalone(
+  device: string | null = null,
+  maxPayloadSize: string = "200mb"
+) {
+  const app = express();
+  app.use(express.json({ limit: maxPayloadSize }));
+
+  const wss = new WebSocket.Server({ noServer: true });
 
   let ebb: EBB | null;
   let clients: WebSocket[] = [];
@@ -239,22 +270,17 @@ export function startServer(
     }
     await plotter.postPlot();
   }
-
-  return new Promise((resolve) => {
-    server.listen(port, () => {
-      async function connect() {
-        for await (const d of ebbs(device)) {
-          ebb = d;
-          broadcast({ c: "dev", p: { path: ebb ? ebb.port.path : null } });
-        }
-      }
-      connect();
-      const { family, address, port } = server.address() as any;
-      const addr = `${family === "IPv6" ? `[${address}]` : address}:${port}`;
-      console.log(`Server listening on http://${addr}`);
-      resolve(server);
-    });
-  });
+  async function connect() {
+    for await (const d of ebbs(device)) {
+      ebb = d;
+      broadcast({ c: "dev", p: { path: ebb ? ebb.port.path : null } });
+    }
+  }
+  return {
+    wss,
+    rest: app,
+    connect,
+  };
 }
 
 function tryOpen(path: string): Promise<SerialPort> {
