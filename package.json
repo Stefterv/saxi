@@ -17,7 +17,6 @@
   "main": "index.js",
   "bin": "cli.js",
   "scripts": {
-    "prebuild": "npm run lint",
     "lint": "eslint --cache --ext .ts,.tsx src",
     "build": "tsc && webpack --mode=production",
     "prepare": "rimraf dist && npm run build",
@@ -56,12 +55,12 @@
     "typescript": "^3.8.3",
     "webpack": "^4.23.1",
     "webpack-cli": "^3.3.12",
+    "eslint": "^5.15.3",
     "worker-loader": "^2.0.0"
   },
   "dependencies": {
     "cors": "^2.8.5",
     "express": "^4.16.4",
-    "eslint": "^5.15.3",
     "flatten-svg": "^0.2.1",
     "serialport": "^8.0.7",
     "svgdom": "0.0.21",
