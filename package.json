@@ -18,7 +18,7 @@
   "bin": "cli.js",
   "scripts": {
     "lint": "eslint --cache --ext .ts,.tsx src",
-    "build": "tsc -p && webpack --mode=production",
+    "build": "tsc -b && webpack --mode=production",
     "prepare": "rimraf dist && npm run build",
     "prestart": "npm run build",
     "start": "node cli.js",
