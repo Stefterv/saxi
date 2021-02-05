@@ -17,7 +17,6 @@
   "main": "index.js",
   "bin": "cli.js",
   "scripts": {
-    "prebuild": "npm run lint",
     "lint": "eslint --cache --ext .ts,.tsx src",
     "build": "tsc && webpack --mode=production",
     "prepare": "rimraf dist && npm run build",
